@@ -1,0 +1,64 @@
+#!/bin/bash
+
+function show_help {
+  echo "atomproj SHORT_PROJECT_NAME"
+  echo "Opens Atom project via an open instance of Atom"
+  echo "atomproj -c SHORT_PROJECT_NAME"
+  echo "Creates a linux desktop file that execute this script"
+}
+
+function create_file {
+  file_path="/home/jrusso/.local/share/applications/atom-project-$1.desktop"
+  if [ -e "$file_path" ]
+  then
+    echo "Desktop file already exists"
+    exit 1
+  fi
+
+  title=`grep -A 1 "\"\?$1\"\?:" $HOME/.atom/projects.cson | sed -n -e 's/^.*title: //p' | sed -n -e 's/"//gp'`
+  if [ -z "$title" ]
+  then
+    echo "Unable to locate project $1"
+    exit 1
+  fi
+
+  cat > $file_path <<EOF
+[Desktop Entry]
+Type=Application
+Icon=/home/jrusso/.icons/Vertex/places/128/folder-atom.svg
+Name=$title
+Terminal=false
+Exec=/home/jrusso/.local/bin/atomproj $1
+Hidden=false
+Keywords=atom;project
+Path=/home/jrusso
+EOF
+  xdg-desktop-menu install $HOME/.local/share/desktop-directories/Atom-Projects.directory $file_path
+}
+
+while getopts ":hc:" opt; do
+  case $opt in
+    h)
+      show_help
+      exit 0
+      ;;
+    c)
+      create_file $OPTARG
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument" >&2
+      exit 1
+      ;;
+  esac
+done
+
+xdotool search --name "$HOME - Atom" windowfocus
+xdotool keydown alt keydown shift key p keyup alt keyup shift
+xdotool type --delay 200 $@
+xdotool key KP_Enter
+exit 0
